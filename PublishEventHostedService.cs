@@ -8,25 +8,25 @@ public class PublishEventHostedService : IHostedService, IDisposable
     private readonly Random _random = new();
 
     private readonly ILogger<PublishEventHostedService> _logger;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IBusControl _busControl;
-    private readonly IPublishEndpoint _publishEndpoint;
 
     public PublishEventHostedService(ILogger<PublishEventHostedService> logger,
-                              IBusControl busControl,
-                              IPublishEndpoint publishEndpoint)
+                                     IServiceProvider serviceProvider,
+                                     IBusControl busControl)
     {
         _logger = logger;
+        _serviceProvider = serviceProvider;
         _busControl = busControl;
-        _publishEndpoint = publishEndpoint;
     }
 
     public Task StartAsync(CancellationToken stoppingToken)
     {
-        _timer = new Timer(TrySendEvent, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
         return Task.CompletedTask;
     }
 
-    private void TrySendEvent(object? state)
+    private void DoWork(object? state)
     {
         _logger.LogInformation("try send event...");
         var result = _busControl.CheckHealth();
@@ -34,13 +34,20 @@ public class PublishEventHostedService : IHostedService, IDisposable
         switch (result.Status)
         {
             case BusHealthStatus.Healthy:
-                _publishEndpoint.Publish(new FileReceivedEvent(_random.Next(1, 999))).Wait();
-                _logger.LogInformation("FileReceivedEvent published");
+                SendEvent();
                 break;
             default:
                 _logger.LogInformation("bus is not ready, waiting...");
                 break;
         }
+    }
+
+    private void SendEvent()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
+        publishEndpoint.Publish(new FileReceivedEvent(_random.Next(1, 999))).Wait();
+        _logger.LogInformation("FileReceivedEvent published");
     }
 
     public Task StopAsync(CancellationToken stoppingToken)
