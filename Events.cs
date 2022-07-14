@@ -1,5 +1,16 @@
 namespace zzz;
 
-public record FileReceivedEvent(int Id);
-public record FileReceived(int Id) : FileReceivedEvent(Id);
-public record CustomerDataReceived(int Id) : FileReceivedEvent(Id);
+public interface FileReceivedEvent
+{
+    public int Id { get; }
+}
+
+public interface FileReceived : FileReceivedEvent
+{
+
+}
+
+public interface CustomerDataReceived : FileReceivedEvent
+{
+
+}
