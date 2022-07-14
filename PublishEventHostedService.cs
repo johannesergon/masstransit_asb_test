@@ -46,8 +46,11 @@ public class PublishEventHostedService : IHostedService, IDisposable
     {
         using var scope = _serviceProvider.CreateScope();
         var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
-        publishEndpoint.Publish(new FileReceivedEvent(_random.Next(1, 999))).Wait();
-        _logger.LogInformation("FileReceivedEvent published");
+
+        var fileReceivedEvent = new { Id = _random.Next(1, 999) };
+
+        publishEndpoint.Publish<FileReceivedEvent>(fileReceivedEvent).Wait();
+        _logger.LogInformation("FileReceivedEvent#{id} published", fileReceivedEvent.Id);
     }
 
     public Task StopAsync(CancellationToken stoppingToken)
